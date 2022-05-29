@@ -23,8 +23,8 @@ def disparitySSD(img_l: np.ndarray, img_r: np.ndarray, disp_range: (int, int), k
                 ssd=0
                 for i in range(krows):
                     for j in range(kcolumns):
-                        if img_r.shape[0]<i and img_r.shape[1]>j:
-                            ssd+=(img_l[i][j]-img_r[r+i-krows//2,c+j-kcolumns//2])**2
+                        if img_r.shape[0]>r+i-m and img_r.shape[1]>c+j-m:
+                            ssd+=(img_l[r][c]-img_r[r+i-m,c+j-m])**2
 
                 if ssd < hold:
                     hold = ssd
@@ -32,6 +32,7 @@ def disparitySSD(img_l: np.ndarray, img_r: np.ndarray, disp_range: (int, int), k
                 answer[r][c]=b_offset
 
     return answer
+
 
 
 def disparityNC(img_l: np.ndarray, img_r: np.ndarray, disp_range: int, k_size: int) -> np.ndarray:
