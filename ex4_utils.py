@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.ndimage import filters
+
 
 
 
@@ -29,7 +31,7 @@ def disparitySSD(img_l: np.ndarray, img_r: np.ndarray, disp_range: (int, int), k
                 if ssd < hold:
                     hold = ssd
                     b_offset = m
-                answer[r][c]=b_offset
+                answer[r][c]= b_offset
 
     return answer
 
@@ -44,8 +46,29 @@ def disparityNC(img_l: np.ndarray, img_r: np.ndarray, disp_range: int, k_size: i
 
     return: Disparity map, disp_map.shape = Left.shape
     """
-    pass
 
+    # disparity range
+    min_offset, max_offset = disp_range[0], disp_range[1]
+    # disparity map
+    disparity_map = np.zeros((img_l.shape[0], img_l.shape[1], max_offset))
+    # calculate average value of our image kernel and normalize
+    norm_l = img_l - filters.uniform_filter(img_l, k_size)
+    norm_r = img_r - filters.uniform_filter(img_r, k_size)
+
+    for offset in range(min_offset, max_offset):
+        # move left img
+        steps = offset + min_offset
+        norm_l_to_r = np.roll(norm_l, -steps)
+        # normalize
+        sigma = filters.uniform_filter(norm_l_to_r * norm_r, k_size)
+        sigma_l = filters.uniform_filter(np.square(norm_l_to_r), k_size)
+        sigma_r = filters.uniform_filter(np.square(norm_r), k_size)
+
+        # update disparity_map with NC score
+        disparity_map[:, :, offset] = sigma / np.sqrt(sigma_l * sigma_r)
+
+    # for each pixel choose maximum depth value
+    return np.argmax(disparity_map, axis=2)
 
 def computeHomography(src_pnt: np.ndarray, dst_pnt: np.ndarray) -> (np.ndarray, float):
     """
