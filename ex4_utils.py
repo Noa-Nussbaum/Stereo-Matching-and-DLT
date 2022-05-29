@@ -77,11 +77,37 @@ def computeHomography(src_pnt: np.ndarray, dst_pnt: np.ndarray) -> (np.ndarray, 
     destination (matched) points. Error = np.sqrt(sum((M.dot(src_pnt)-dst_pnt)**2))
 
     src_pnt: 4+ keypoints locations (x,y) on the original image. Shape:[4+,2]
-    dst_pnt: 4+ keypoints locations (x,y) on the destenation image. Shape:[4+,2]
+    dst_pnt: 4+ keypoints locations (x,y) on the destination image. Shape:[4+,2]
 
     return: (Homography matrix shape:[3,3], Homography error)
     """
-    pass
+    answer = np.ones((3, 3))
+
+    # initiate homography matrix
+    A = []
+
+    # create A
+    for i in range(src_pnt.shape[0]):
+        # init src vector
+        x_s, y_s = src_pnt[i][0], src_pnt[i][1]
+        # init dest vector
+        x_d, y_d = dst_pnt[i][0], dst_pnt[i][1]
+        # init A matrix
+        A.append([x_s, y_s, 1, 0, 0, 0, -x_d * x_s, -x_d * y_s, -x_d])
+        A.append([0, 0, 0, x_s, y_s, 1, -y_d * x_s, -y_d * y_s, -y_d])
+
+    u, s, vh = np.linalg.svd(A)
+
+    # find eigen vector with smallest eigen value - this is the answer, H
+    answer = (vh[-1, :] / vh[-1, -1] ).reshape(3, 3)
+
+    # find error
+    src_pnt = np.hstack((src_pnt, np.ones((src_pnt.shape[0], 1)))).T
+    h_src = answer.dot(src_pnt)
+    h_src /= h_src[2, :]
+    error = np.sqrt(np.sum(h_src[0:2, :] - dst_pnt.T) ** 2)
+
+    return answer, error
 
 
 def warpImag(src_img: np.ndarray, dst_img: np.ndarray) -> None:
