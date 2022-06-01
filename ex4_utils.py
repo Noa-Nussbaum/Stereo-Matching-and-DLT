@@ -1,7 +1,8 @@
+import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from typing import List
 from scipy.ndimage import filters
-
 
 
 
@@ -34,8 +35,6 @@ def disparitySSD(img_l: np.ndarray, img_r: np.ndarray, disp_range: (int, int), k
                 answer[r][c]= b_offset
 
     return answer
-
-
 
 def disparityNC(img_l: np.ndarray, img_r: np.ndarray, disp_range: int, k_size: int) -> np.ndarray:
     """
@@ -109,7 +108,6 @@ def computeHomography(src_pnt: np.ndarray, dst_pnt: np.ndarray) -> (np.ndarray, 
 
     return answer, error
 
-
 def warpImag(src_img: np.ndarray, dst_img: np.ndarray) -> None:
     """
     Displays both images, and lets the user mark 4 or more points on each image.
@@ -145,6 +143,51 @@ def warpImag(src_img: np.ndarray, dst_img: np.ndarray) -> None:
 
     ##### Your Code Here ######
 
-    # out = dst_img * mask + src_out * (1 - mask)
-    # plt.imshow(out)
-    # plt.show()
+    src_p = []
+    fig2 = plt.figure()
+
+    # same as onclick_1, but with the source image instead of the dest
+    def onclick_2(event):
+        x = event.xdata
+        y = event.ydata
+        print("Loc: {:.0f},{:.0f}".format(x, y))
+
+        plt.plot(x, y, '*r')
+        src_p.append([x, y])
+
+        if len(src_p) == 4:
+            plt.close()
+        plt.show()
+
+    # display image 2, same operations as display image 1
+    cid = fig2.canvas.mpl_connect('button_press_event', onclick_2)
+    plt.imshow(src_img)
+    plt.show()
+    src_p = np.array(src_p)
+    RANSAC_REPROJ_THRESHOLD = 5.0
+
+    homography = cv2.findHomography(src_p, dst_p,cv2.RANSAC, RANSAC_REPROJ_THRESHOLD)[0]  # using cv to find the accurate homography
+
+    source_height = src_img.shape[0]
+    source_width = src_img.shape[1]
+    warp = np.zeros_like(dst_img)
+    # boundaries = np.zeros_like(dst_img)
+    for i in range(source_height):
+        for j in range(source_width):
+            temp = np.array([j, i, 1])
+            new_coor = np.dot(homography, temp)  # dot product for calculating the coordinates
+            y = int(new_coor[0] / new_coor[new_coor.shape[0] - 1])  # getting the new y
+            x = int(new_coor[1] / new_coor[new_coor.shape[0] - 1])  # getting the new x
+            warp[x, y] = src_img[
+                i, j]  # setting that the new coordinate will present the source in the original i and j
+            # if warp[x, y] == :
+            #     boundaries[x, y] = True
+            # else:
+            #     boundaries[x, y] = False
+    boundaries = warp == 0  # getting where we want to "paste"
+    outcome = dst_img * boundaries + (1 - boundaries) * warp  # using a formula we have been taught
+    plt.imshow(outcome)
+    plt.show()
+
+
+
