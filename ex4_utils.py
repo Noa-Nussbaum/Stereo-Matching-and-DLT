@@ -15,26 +15,61 @@ def disparitySSD(img_l: np.ndarray, img_r: np.ndarray, disp_range: (int, int), k
 
     return: Disparity map, disp_map.shape = Left.shape
     """
-    answer = np.zeros(img_l.shape)
-    krows = k_size*2+1
-    kcolumns = k_size*2+1
-    for r in range(img_l.shape[0]):
-        for c in range(img_l.shape[1]):
-            b_offset = -1
-            hold=np.inf
-            for m in range(disp_range[0],disp_range[1]):
-                ssd=0
-                for i in range(krows):
-                    for j in range(kcolumns):
-                        if img_r.shape[0]>r+i-m and img_r.shape[1]>c+j-m:
-                            ssd+=(img_l[r][c]-img_r[r+i-m,c+j-m])**2
+    # answer = np.zeros(img_l.shape)
+    # krows = k_size*2+1
+    # kcolumns = k_size*2+1
+    # for r in range(img_l.shape[0]):
+    #     for c in range(img_l.shape[1]):
+    #         b_offset = -1
+    #         hold=np.inf
+    #         for m in range(disp_range[0],disp_range[1]):
+    #             ssd=0
+    #             for i in range(krows):
+    #                 for j in range(kcolumns):
+    #                     if img_r.shape[0]>r+i-m and img_r.shape[1]>c+j-m:
+    #                         ssd+=(img_l[r][c]-img_r[r+i-m,c+j-m])**2
+    #
+    #             if ssd < hold:
+    #                 hold = ssd
+    #                 b_offset = m
+    #             answer[r][c]= b_offset
+    #
+    # return answer
 
-                if ssd < hold:
-                    hold = ssd
-                    b_offset = m
-                answer[r][c]= b_offset
+    if disp_range[1] - disp_range[0] + 1 > 80:
+        raise ValueError("display_range must be lower then 80")
+    disp_map = np.zeros(img_l.shape)
+    for i in range(k_size, img_l.shape[0] - k_size):
+        for j in range(k_size, img_l.shape[1] - k_size):
+            sxl = i - k_size
+            exl = i + k_size + 1
+            syl = j - k_size
+            eyl = j + k_size + 1
+            patch_left = img_l[sxl:exl, syl:eyl]
+            min_ssd = np.inf
+            for offset in range(disp_range[0], disp_range[1]):
+                sxrr = i - k_size
+                exrr = i + k_size + 1
+                syrr = j - k_size + offset
+                eyrr = j + k_size + 1 + offset
 
-    return answer
+                sxrl = i - k_size
+                exrl = i + k_size + 1
+                syrl = j - k_size - offset
+                eyrl = j + k_size + 1 - offset
+                patch_right_r = img_r[sxrr:exrr, syrr:eyrr]
+                patch_right_l = img_r[sxrl:exrl, syrl:eyrl]
+                if patch_right_r.shape == patch_left.shape:
+                    ssd = np.sum((patch_left - patch_right_r) ** 2)
+                    if ssd < min_ssd:
+                        disp_map[i, j] = offset
+                        min_ssd = ssd
+                if patch_right_l.shape[0] == patch_left.shape[0] and patch_right_l.shape[1] == patch_left.shape[1]:
+                    ssd = np.sum((patch_left - patch_right_l) ** 2)
+                    if ssd < min_ssd:
+                        disp_map[i, j] = offset
+                        min_ssd = ssd
+    return disp_map
 
 def disparityNC(img_l: np.ndarray, img_r: np.ndarray, disp_range: int, k_size: int) -> np.ndarray:
     """
